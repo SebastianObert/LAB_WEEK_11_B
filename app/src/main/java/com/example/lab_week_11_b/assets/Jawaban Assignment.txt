@@ -1,4 +1,4 @@
-Jawaban Assignment
+Jawaban Assignment 3
 
 1.) Bagian kode yang menangani proses penyalinan data gambar dari file sementara (yang diakses oleh kamera) ke penyimpanan permanen MediaStore (yang bisa diakses oleh Galeri) adalah fungsi insertToStore di dalam file ProviderFileManager.kt.
 
