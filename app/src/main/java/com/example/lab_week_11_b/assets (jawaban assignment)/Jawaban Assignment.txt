@@ -1,0 +1,45 @@
+Jawaban Assignment
+
+1.) Bagian kode yang menangani proses penyalinan data gambar dari file sementara (yang diakses oleh kamera) ke penyimpanan permanen MediaStore (yang bisa diakses oleh Galeri) adalah fungsi insertToStore di dalam file ProviderFileManager.kt.
+
+Fungsi ini membaca data dari URI sementara dan menulisnya ke URI permanen yang baru dibuat oleh MediaStore.
+
+private fun insertToStore(fileInfo: FileInfo, contentUri: Uri, contentValues: ContentValues) {
+    executor.execute {
+        val insertedUri = contentResolver.insert(contentUri, contentValues)
+        insertedUri?.let {
+            val inputStream = contentResolver.openInputStream(fileInfo.uri)
+            val outputStream = contentResolver.openOutputStream(insertedUri)
+            IOUtils.copy(inputStream, outputStream)
+        }
+    }
+}
+
+2.) - uri: Atribut ini mengacu pada Content URI sementara yang dibuat oleh FileProvider. URI ini berfungsi sebagai alamat aman yang diberikan kepada aplikasi kamera agar bisa menulis data gambar ke sebuah file yang berada di dalam direktori internal aplikasi Anda. Ini bukan URI final tempat gambar disimpan di galeri, melainkan hanya URI perantara untuk proses pengambilan gambar.
+
+- relativePath: Atribut ini mengacu pada lokasi folder tujuan di dalam penyimpanan bersama (shared storage) tempat file akan disimpan oleh MediaStore. Dalam kode ini, nilainya adalah Environment.DIRECTORY_PICTURES (yaitu folder "Pictures") atau Environment.DIRECTORY_MOVIES ("Movies"). Informasi ini digunakan oleh sistem Android (khususnya API 29/Android 10 ke atas) untuk menempatkan file di folder yang benar, misalnya Pictures/ atau Movies/, sehingga mudah ditemukan oleh pengguna dan aplikasi lain seperti galeri.
+
+3.) Urutan prosesnya dari awal hingga akhir:
+
+1. Pengguna Menekan Tombol "Photo": Aksi ini memicu OnClickListener di MainActivity.
+
+2. Pengecekan Izin: Aplikasi memanggil fungsi checkStoragePermission untuk memastikan izin akses penyimpanan telah diberikan (ini hanya relevan untuk Android 9 ke bawah).
+
+3. Pembuatan File dan URI Sementara: Setelah izin dikonfirmasi, fungsi openImageCapture dipanggil. Fungsi ini memanggil providerFileManager.generatePhotoUri() yang melakukan dua hal penting:
+- Membuat sebuah file kosong di direktori privat aplikasi (contoh: .../files/Pictures/img_timestamp.jpg).
+- Menggunakan FileProvider untuk menghasilkan sebuah URI konten sementara yang aman untuk file kosong tersebut.
+
+4. Meluncurkan Aplikasi Kamera: Aplikasi kamera bawaan diluncurkan melalui takePictureLauncher.launch(). URI sementara dari langkah sebelumnya diteruskan sebagai tujuan output, memberitahu kamera di mana harus menyimpan foto.
+
+5. Pengguna Mengambil Foto: Pengguna mengambil foto dan menyetujuinya. Aplikasi kamera kemudian menulis data gambar ke file yang ditunjuk oleh URI sementara.
+
+6. Menerima Hasil: Setelah kamera ditutup, callback registerForActivityResult di MainActivity akan aktif, menandakan bahwa proses pengambilan gambar selesai.
+
+7. Memulai Proses Penyimpanan: Callback tersebut memanggil providerFileManager.insertImageToStore(photoInfo).
+
+8. Menyalin File ke MediaStore:
+- Di dalam insertImageToStore, contentResolver.insert() dipanggil. Ini membuat entri baru di database MediaStore dan menghasilkan URI permanen yang baru untuk gambar di penyimpanan publik.
+- Aplikasi membuka InputStream dari URI sementara (yang sekarang berisi data gambar) dan OutputStream ke URI permanen yang baru.
+- IOUtils.copy() melakukan tugas akhir: menyalin seluruh data gambar dari InputStream ke OutputStream, secara efektif memindahkan gambar ke lokasi publik yang dapat diakses oleh galeri.
+
+9. Selesai: File gambar sekarang telah tersimpan dengan aman di MediaStore dan akan langsung muncul di aplikasi galeri perangkat.
